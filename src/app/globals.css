@@ -1,0 +1,234 @@
+:root {
+  --bg: #0b1020;
+  --panel: rgba(17, 24, 43, 0.86);
+  --panel-border: rgba(120, 140, 200, 0.18);
+  --text: #e7ecf6;
+  --muted: #93a0bf;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family:
+    system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden;
+}
+
+/* ---- Map ---- */
+.map-root {
+  position: fixed;
+  inset: 0;
+  background: var(--bg);
+}
+
+/* Dark-mode Leaflet tiles without shipping a tile theme. */
+.leaflet-tile-pane {
+  filter: brightness(0.6) invert(1) contrast(0.85) hue-rotate(190deg)
+    saturate(0.7) brightness(0.9);
+}
+.leaflet-container {
+  background: var(--bg);
+  font: inherit;
+}
+
+/* ---- Plane markers ---- */
+.plane-icon {
+  font-size: 18px;
+  line-height: 1;
+  text-align: center;
+  text-shadow: 0 0 3px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+}
+.plane-marker.taggable {
+  cursor: pointer;
+}
+.plane-marker.taggable .plane-icon {
+  pointer-events: auto;
+  filter: drop-shadow(0 0 6px currentColor);
+}
+.plane-marker.taggable::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 30px;
+  height: 30px;
+  margin: -15px 0 0 -15px;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  opacity: 0.6;
+  animation: pulse 1.4s ease-out infinite;
+}
+@keyframes pulse {
+  0% {
+    transform: scale(0.5);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1.6);
+    opacity: 0;
+  }
+}
+
+.airport-label {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 700;
+  text-shadow: 0 0 4px #000, 0 0 4px #000;
+}
+
+/* ---- HUD ---- */
+.hud {
+  position: fixed;
+  z-index: 1000;
+  pointer-events: none;
+}
+.hud * {
+  pointer-events: auto;
+}
+.hud-top {
+  top: 12px;
+  left: 12px;
+  right: 12px;
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 14px;
+  padding: 12px 14px;
+  backdrop-filter: blur(8px);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);
+}
+.brand {
+  font-weight: 800;
+  letter-spacing: 0.5px;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.brand small {
+  font-weight: 500;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.scoreboard {
+  min-width: 190px;
+}
+.score-row {
+  display: grid;
+  grid-template-columns: 14px 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+  padding: 3px 0;
+  font-size: 13px;
+}
+.score-row.you {
+  font-weight: 800;
+}
+.dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+}
+.score-row .sub {
+  color: var(--muted);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+}
+.score-row .pts {
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+
+.hud-bottom {
+  bottom: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+.tag-btn {
+  pointer-events: auto;
+  border: none;
+  border-radius: 999px;
+  padding: 16px 28px;
+  font-size: 17px;
+  font-weight: 800;
+  color: #fff;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  transition:
+    transform 0.08s ease,
+    filter 0.15s ease;
+}
+.tag-btn:active {
+  transform: scale(0.96);
+}
+.tag-btn:disabled {
+  filter: grayscale(0.7) brightness(0.7);
+  cursor: not-allowed;
+}
+.toast {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 999px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  opacity: 0;
+  transform: translateY(8px);
+  transition:
+    opacity 0.2s ease,
+    transform 0.2s ease;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.status {
+  color: var(--muted);
+  font-size: 11px;
+  margin-top: 6px;
+}
+.team-pick {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.team-pick button {
+  border: 1px solid var(--panel-border);
+  background: transparent;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 5px 9px;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.team-pick button.active {
+  color: #fff;
+}
+.controls-hint {
+  color: var(--muted);
+  font-size: 11px;
+}
