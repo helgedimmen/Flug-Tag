@@ -1,0 +1,50 @@
+name: Deploy to Cloudflare Pages
+
+# Same setup as HD-Field-Manager: build the static export and publish it to
+# Cloudflare Pages. Works from a private repo, served at flug-tag.pages.dev.
+# One-time setup: add the repo secrets CLOUDFLARE_API_TOKEN and
+# CLOUDFLARE_ACCOUNT_ID (Settings → Secrets and variables → Actions).
+
+on:
+  push:
+    branches:
+      - claude/flight-radar-game-va9AK
+  workflow_dispatch:
+
+concurrency:
+  group: cloudflare-pages
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  deployments: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - run: npm test
+
+      # Cloudflare Pages serves the project at the root of its *.pages.dev
+      # hostname, so no PAGES_BASE_PATH is set — the build produces root-
+      # relative URLs.
+      - name: Build static export
+        run: npm run build
+
+      - name: Deploy to Cloudflare Pages
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          # First deploy auto-creates the project. Change `--project-name` if
+          # you want a different Cloudflare project name.
+          command: pages deploy out --project-name=flug-tag --branch=claude/flight-radar-game-va9AK
