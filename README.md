@@ -19,6 +19,16 @@ senere — i dag spiller du mot simulerte rivaler.
    territorium (Ingress-stil).
 6. Resultattavlen oppe til høyre teller fly + flyplasser → poeng.
 
+## Spill online (GitHub Pages)
+
+Spillet er rent klient-side, så det kan kjøres som en vanlig nettside rett fra
+repoet. Et GitHub Actions-oppsett (`.github/workflows/deploy-pages.yml`) bygger
+og publiserer automatisk ved hver push til spill-branchen.
+
+**Engangsoppsett:** gå til repoets **Settings → Pages → Build and deployment →
+Source: «GitHub Actions»**. Etter det blir spillet liggende på
+`https://<bruker>.github.io/Flug-Tag/` og oppdateres ved hver endring.
+
 ## Kjør lokalt
 
 ```bash

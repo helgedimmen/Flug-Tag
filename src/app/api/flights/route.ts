@@ -1,14 +1,18 @@
-import { NextRequest } from "next/server";
 import { fetchLiveAircraft, openSkyConfigured } from "@/lib/opensky";
 
-// Live-data endpoint. Default game runs on the in-browser simulation, so this
-// only does real work once OpenSky credentials are set (see src/lib/opensky.ts).
-// Without them it returns `{ source: "none" }` and the client stays on the sim.
+// Live-data endpoint. The game runs on the in-browser simulation by default, so
+// this only does real work once OpenSky credentials are set (see
+// src/lib/opensky.ts). Without them it returns `{ source: "none" }`.
 //
-// GET /api/flights?lamin=&lomin=&lamax=&lomax=
-export const dynamic = "force-dynamic";
+// Declared `force-static` so the app can also be exported as a fully static site
+// (GitHub Pages) — in that mode this is baked at build time using the default
+// mainland-Norway bounding box.
+export const dynamic = "force-static";
 
-export async function GET(req: NextRequest) {
+// Default bbox: mainland Norway.
+const NORWAY = { lamin: 57.5, lomin: 4.0, lamax: 71.5, lomax: 31.5 };
+
+export async function GET() {
   if (!openSkyConfigured()) {
     return Response.json({
       source: "none",
@@ -16,22 +20,8 @@ export async function GET(req: NextRequest) {
       aircraft: [],
     });
   }
-
-  const sp = req.nextUrl.searchParams;
-  const num = (k: string, d: number) => {
-    const v = Number(sp.get(k));
-    return Number.isFinite(v) ? v : d;
-  };
-  // Default bbox: mainland Norway.
-  const bbox = {
-    lamin: num("lamin", 57.5),
-    lomin: num("lomin", 4.0),
-    lamax: num("lamax", 71.5),
-    lomax: num("lomax", 31.5),
-  };
-
   try {
-    const aircraft = await fetchLiveAircraft(bbox);
+    const aircraft = await fetchLiveAircraft(NORWAY);
     return Response.json({ source: "opensky", aircraft });
   } catch (err) {
     return Response.json(
