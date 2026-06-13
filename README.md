@@ -19,17 +19,16 @@ senere — i dag spiller du mot simulerte rivaler.
    territorium (Ingress-stil).
 6. Resultattavlen oppe til høyre teller fly + flyplasser → poeng.
 
-## Spill online (Cloudflare Pages)
+## Spill online (GitHub Pages)
 
-Samme oppsett som HD-Field-Manager. Spillet er rent klient-side og bygges som en
-statisk side (`out/`), så `.github/workflows/deploy.yml` publiserer det til
-Cloudflare Pages ved hver push til spill-branchen — fungerer fra et **privat**
-repo og serveres på `https://flug-tag.pages.dev`.
+Spillet er rent klient-side og bygges som en statisk side (`out/`), så
+`.github/workflows/deploy.yml` publiserer det til GitHub Pages ved hver push til
+spill-branchen. Arbeidsflyten skrur på Pages selv.
 
-**Engangsoppsett (samme to secrets som sist):** i GitHub → *Settings → Secrets
-and variables → Actions* legg inn `CLOUDFLARE_API_TOKEN` og
-`CLOUDFLARE_ACCOUNT_ID` (fra Cloudflare-dashbordet). Første deploy oppretter
-Pages-prosjektet `flug-tag` automatisk.
+**Engangsoppsett:** repoet må være **public** (GitHub Pages på gratisplanen
+krever det). Settings → nederst (Danger Zone) → *Change visibility* → *Make
+public*. Deretter publiseres spillet på `https://helgedimmen.github.io/Flug-Tag/`
+og oppdateres ved hver endring.
 
 ## Kjør lokalt
 

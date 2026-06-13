@@ -1,9 +1,9 @@
-name: Deploy to Cloudflare Pages
+name: Deploy to GitHub Pages
 
-# Same setup as HD-Field-Manager: build the static export and publish it to
-# Cloudflare Pages. Works from a private repo, served at flug-tag.pages.dev.
-# One-time setup: add the repo secrets CLOUDFLARE_API_TOKEN and
-# CLOUDFLARE_ACCOUNT_ID (Settings → Secrets and variables → Actions).
+# Publishes the static export to GitHub Pages. The workflow enables Pages itself
+# (configure-pages enablement), so the only manual step is making the repo
+# public — GitHub Pages on the Free plan requires a public repo.
+# Served at https://helgedimmen.github.io/Flug-Tag/
 
 on:
   push:
@@ -11,40 +11,47 @@ on:
       - claude/flight-radar-game-va9AK
   workflow_dispatch:
 
-concurrency:
-  group: cloudflare-pages
-  cancel-in-progress: true
-
 permissions:
   contents: read
-  deployments: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-
       - run: npm ci
-
       - run: npm test
-
-      # Cloudflare Pages serves the project at the root of its *.pages.dev
-      # hostname, so no PAGES_BASE_PATH is set — the build produces root-
-      # relative URLs.
+      - name: Configure + enable GitHub Pages
+        uses: actions/configure-pages@v5
+        with:
+          enablement: true
       - name: Build static export
         run: npm run build
-
-      - name: Deploy to Cloudflare Pages
-        uses: cloudflare/wrangler-action@v3
+        env:
+          # Project Pages sites are served from /<repo>/, so build under that path.
+          PAGES_BASE_PATH: /Flug-Tag
+      - name: Disable Jekyll (serve _next/ assets)
+        run: touch out/.nojekyll
+      - uses: actions/upload-pages-artifact@v3
         with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          # First deploy auto-creates the project. Change `--project-name` if
-          # you want a different Cloudflare project name.
-          command: pages deploy out --project-name=flug-tag --branch=claude/flight-radar-game-va9AK
+          path: out
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
