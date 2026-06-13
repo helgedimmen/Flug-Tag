@@ -1,9 +1,8 @@
 name: Deploy to GitHub Pages
 
-# Publishes the static export to GitHub Pages. The workflow enables Pages itself
-# (configure-pages enablement), so the only manual step is making the repo
-# public — GitHub Pages on the Free plan requires a public repo.
-# Served at https://helgedimmen.github.io/Flug-Tag/
+# Publishes the static export to GitHub Pages.
+# One-time setup (both done): repo is public, and Settings → Pages → Source is
+# set to "GitHub Actions". Served at https://helgedimmen.github.io/Flug-Tag/
 
 on:
   push:
@@ -31,10 +30,6 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
-      - name: Configure + enable GitHub Pages
-        uses: actions/configure-pages@v5
-        with:
-          enablement: true
       - name: Build static export
         run: npm run build
         env:
