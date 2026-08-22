@@ -3,57 +3,63 @@ import {
   airportControl,
   computeScores,
   pruneLandings,
-  taggablePlanes,
-  tagPlane,
+  taggableVessels,
+  tagVessel,
 } from "@/lib/game";
-import type { Landing, Plane } from "@/lib/types";
+import type { Landing, Vessel, VesselKind } from "@/lib/types";
 
-function plane(id: string, lat: number, lon: number, teamId: string | null): Plane {
+function vessel(
+  id: string,
+  lat: number,
+  lon: number,
+  teamId: string | null,
+  kind: VesselKind = "plane",
+): Vessel {
   return {
     id,
+    kind,
     callsign: id,
-    fromId: "OSL",
-    toId: "BGO",
     lat,
     lon,
     headingDeg: 0,
-    speedKmh: 800,
-    altitude: 10000,
-    progress: 0.5,
-    legKm: 300,
+    speedKmh: kind === "plane" ? 800 : 30,
+    altitude: kind === "plane" ? 10000 : 0,
+    onGround: false,
+    lastSeen: 0,
     teamId,
     trail: [],
   };
 }
 
-describe("taggablePlanes", () => {
+describe("taggableVessels", () => {
   const player = { lat: 60, lon: 10 };
-  it("includes neutral planes in range and excludes far ones", () => {
-    const planes = [
-      plane("near", 60.1, 10.1, null),
-      plane("far", 69, 18, null),
+  it("includes neutral vessels in range and excludes far ones", () => {
+    const vessels = [
+      vessel("near", 60.1, 10.1, null),
+      vessel("boat", 60.2, 10.0, null, "boat"),
+      vessel("far", 69, 18, null),
     ];
-    const out = taggablePlanes(planes, player, "blue", 120);
-    expect(out.map((p) => p.id)).toEqual(["near"]);
+    const out = taggableVessels(vessels, player, "blue", 120);
+    expect(out.map((v) => v.id)).toEqual(["near", "boat"]);
   });
 
-  it("excludes planes the player already owns but allows stealing rivals", () => {
-    const planes = [
-      plane("mine", 60.1, 10.1, "blue"),
-      plane("theirs", 60.1, 10.1, "red"),
+  it("excludes vessels the player already owns but allows stealing rivals", () => {
+    const vessels = [
+      vessel("mine", 60.1, 10.1, "blue"),
+      vessel("theirs", 60.1, 10.1, "red"),
     ];
-    const out = taggablePlanes(planes, player, "blue", 120);
-    expect(out.map((p) => p.id)).toEqual(["theirs"]);
+    const out = taggableVessels(vessels, player, "blue", 120);
+    expect(out.map((v) => v.id)).toEqual(["theirs"]);
   });
 });
 
-describe("tagPlane", () => {
+describe("tagVessel", () => {
   it("assigns ownership and restarts the trail at the tag point", () => {
-    const p = plane("x", 60, 10, null);
-    p.trail = [{ lat: 1, lon: 1 }, { lat: 2, lon: 2 }];
-    tagPlane(p, "blue");
-    expect(p.teamId).toBe("blue");
-    expect(p.trail).toEqual([{ lat: 60, lon: 10 }]);
+    const v = vessel("x", 60, 10, null);
+    v.trail = [{ lat: 1, lon: 1 }, { lat: 2, lon: 2 }];
+    tagVessel(v, "blue");
+    expect(v.teamId).toBe("blue");
+    expect(v.trail).toEqual([{ lat: 60, lon: 10 }]);
   });
 });
 
@@ -92,16 +98,19 @@ describe("pruneLandings", () => {
 });
 
 describe("computeScores", () => {
-  it("scores planes (10) + airports (50) and sorts descending", () => {
-    const planes = [
-      plane("a", 0, 0, "blue"),
-      plane("b", 0, 0, "blue"),
-      plane("c", 0, 0, "red"),
+  it("scores planes (10) + boats (10) + airports (50), sorted descending", () => {
+    const vessels = [
+      vessel("a", 0, 0, "blue"),
+      vessel("b", 0, 0, "blue"),
+      vessel("s", 0, 0, "blue", "boat"),
+      vessel("c", 0, 0, "red"),
     ];
     const control = { OSL: "blue", BGO: "red", TRD: "blue" };
-    const rows = computeScores(planes, control, ["blue", "red", "green"]);
-    expect(rows[0].teamId).toBe("blue"); // 2*10 + 2*50 = 120
-    expect(rows[0].score).toBe(120);
+    const rows = computeScores(vessels, control, ["blue", "red", "green"]);
+    expect(rows[0].teamId).toBe("blue"); // 2*10 + 1*10 + 2*50 = 130
+    expect(rows[0].score).toBe(130);
+    expect(rows[0].planes).toBe(2);
+    expect(rows[0].boats).toBe(1);
     const red = rows.find((r) => r.teamId === "red")!;
     expect(red.score).toBe(60); // 1*10 + 1*50
     const green = rows.find((r) => r.teamId === "green")!;

@@ -57,6 +57,33 @@ export function interpolate(a: LatLng, b: LatLng, f: number): LatLng {
 }
 
 /**
+ * Destination point: start at `a`, travel `km` along `bearing` (degrees,
+ * 0 = north, clockwise) on a great circle. Used to dead-reckon live vessels
+ * forward between feed updates.
+ */
+export function destination(a: LatLng, bearing: number, km: number): LatLng {
+  if (km === 0) return { lat: a.lat, lon: a.lon };
+  const d = km / R_EARTH_KM; // angular distance
+  const brg = toRad(bearing);
+  const lat1 = toRad(a.lat);
+  const lon1 = toRad(a.lon);
+
+  const lat2 = Math.asin(
+    Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(brg),
+  );
+  const lon2 =
+    lon1 +
+    Math.atan2(
+      Math.sin(brg) * Math.sin(d) * Math.cos(lat1),
+      Math.cos(d) - Math.sin(lat1) * Math.sin(lat2),
+    );
+  return {
+    lat: toDeg(lat2),
+    lon: ((toDeg(lon2) + 540) % 360) - 180, // normalise to [-180, 180)
+  };
+}
+
+/**
  * Convex hull (Andrew's monotone chain) of a set of points, treated as planar
  * — fine at country scale. Returns the hull in order, or the input unchanged
  * when there are fewer than 3 points. Used to draw a team's "field": the

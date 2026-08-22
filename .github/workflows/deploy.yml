@@ -35,6 +35,11 @@ jobs:
         env:
           # Project Pages sites are served from /<repo>/, so build under that path.
           PAGES_BASE_PATH: /Flug-Tag
+          # Optional: bakes the aisstream.io key into the bundle so boats are
+          # live for everyone without setup. Add it as a repo secret named
+          # AISSTREAM_KEY. Note: anything in a static bundle is public — the
+          # key is free and can be regenerated at aisstream.io if abused.
+          NEXT_PUBLIC_AISSTREAM_KEY: ${{ secrets.AISSTREAM_KEY }}
       - name: Disable Jekyll (serve _next/ assets)
         run: touch out/.nojekyll
       - uses: actions/upload-pages-artifact@v3

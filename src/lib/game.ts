@@ -5,57 +5,57 @@ import type {
   GameConfig,
   Landing,
   LatLng,
-  Plane,
   ScoreRow,
+  Vessel,
 } from "./types";
 
 export const DEFAULT_CONFIG: GameConfig = {
   tagRangeKm: 120,
   controlMode: "most-in-window",
-  controlWindowMs: 5 * 60 * 1000,
-  trailLength: 40,
+  controlWindowMs: 15 * 60 * 1000,
+  trailLength: 60,
 };
 
 /** Points awarded for various holdings — keeps scoring deterministic. */
 const PTS_PER_PLANE = 10;
+const PTS_PER_BOAT = 10;
 const PTS_PER_AIRPORT = 50;
 
-/** Planes the player could tag right now: within range and not already theirs. */
-export function taggablePlanes(
-  planes: Plane[],
+/** Vessels the player could tag right now: within range and not already theirs. */
+export function taggableVessels(
+  vessels: Vessel[],
   player: LatLng,
   playerTeamId: string,
   rangeKm: number,
-): Plane[] {
-  return planes.filter(
-    (p) =>
-      p.teamId !== playerTeamId && distanceKm(player, p) <= rangeKm,
+): Vessel[] {
+  return vessels.filter(
+    (v) => v.teamId !== playerTeamId && distanceKm(player, v) <= rangeKm,
   );
 }
 
-/** Claim a plane for a team. Mutates the plane (and resets its trail so the
+/** Claim a vessel for a team. Mutates the vessel (and resets its trail so the
  *  colour change reads cleanly from the tag point onward). */
-export function tagPlane(plane: Plane, teamId: string): void {
-  plane.teamId = teamId;
-  plane.trail = [{ lat: plane.lat, lon: plane.lon }];
+export function tagVessel(vessel: Vessel, teamId: string): void {
+  vessel.teamId = teamId;
+  vessel.trail = [{ lat: vessel.lat, lon: vessel.lon }];
 }
 
 /**
  * Stand-in for other players until real multiplayer lands: rival factions
- * occasionally claim neutral planes, so airports change hands and the map
- * stays contested in single-player. Mutates planes in place.
+ * occasionally claim neutral vessels, so airports change hands and the map
+ * stays contested in single-player. Mutates vessels in place.
  */
 export function rivalAiTick(
-  planes: Plane[],
+  vessels: Vessel[],
   playerTeamId: string,
-  claimChancePerTick = 0.04,
+  claimChancePerTick = 0.02,
 ): void {
   const rivals = rivalTeams(playerTeamId);
-  for (const p of planes) {
-    if (p.teamId) continue;
+  for (const v of vessels) {
+    if (v.teamId) continue;
     if (Math.random() < claimChancePerTick) {
       const team = rivals[Math.floor(Math.random() * rivals.length)];
-      tagPlane(p, team.id);
+      tagVessel(v, team.id);
     }
   }
 }
@@ -117,22 +117,29 @@ export function airportControl(
   return control;
 }
 
-/** Scoreboard: planes owned + airports controlled per team. */
+/** Scoreboard: planes + boats owned and airports controlled per team. */
 export function computeScores(
-  planes: Plane[],
+  vessels: Vessel[],
   control: Record<string, string>,
   teamIds: string[],
 ): ScoreRow[] {
   const rows: Record<string, ScoreRow> = {};
   for (const id of teamIds)
-    rows[id] = { teamId: id, planes: 0, airports: 0, score: 0 };
+    rows[id] = { teamId: id, planes: 0, boats: 0, airports: 0, score: 0 };
 
-  for (const p of planes) if (p.teamId && rows[p.teamId]) rows[p.teamId].planes++;
+  for (const v of vessels) {
+    if (!v.teamId || !rows[v.teamId]) continue;
+    if (v.kind === "plane") rows[v.teamId].planes++;
+    else rows[v.teamId].boats++;
+  }
   for (const teamId of Object.values(control))
     if (rows[teamId]) rows[teamId].airports++;
 
   for (const r of Object.values(rows))
-    r.score = r.planes * PTS_PER_PLANE + r.airports * PTS_PER_AIRPORT;
+    r.score =
+      r.planes * PTS_PER_PLANE +
+      r.boats * PTS_PER_BOAT +
+      r.airports * PTS_PER_AIRPORT;
 
   return Object.values(rows).sort((a, b) => b.score - a.score);
 }

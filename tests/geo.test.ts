@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { bearingDeg, convexHull, distanceKm, interpolate } from "@/lib/geo";
+import { bearingDeg, convexHull, destination, distanceKm, interpolate } from "@/lib/geo";
 import { AIRPORT_BY_ID } from "@/lib/airports";
 
 describe("distanceKm", () => {
@@ -38,6 +38,27 @@ describe("interpolate", () => {
     const total = distanceKm(a, b);
     expect(distanceKm(a, mid)).toBeCloseTo(total / 2, 0);
     expect(distanceKm(mid, b)).toBeCloseTo(total / 2, 0);
+  });
+});
+
+describe("destination", () => {
+  it("travels the requested distance along the bearing", () => {
+    const start = { lat: 63.43, lon: 10.4 };
+    const end = destination(start, 90, 50);
+    expect(distanceKm(start, end)).toBeCloseTo(50, 1);
+    expect(bearingDeg(start, end)).toBeCloseTo(90, 0);
+  });
+
+  it("is a no-op for zero distance", () => {
+    expect(destination({ lat: 60, lon: 10 }, 123, 0)).toEqual({ lat: 60, lon: 10 });
+  });
+
+  it("round-trips with distance+bearing", () => {
+    const a = { lat: 69.68, lon: 18.92 };
+    const b = { lat: 58.88, lon: 5.64 };
+    const c = destination(a, bearingDeg(a, b), distanceKm(a, b));
+    expect(c.lat).toBeCloseTo(b.lat, 3);
+    expect(c.lon).toBeCloseTo(b.lon, 3);
   });
 });
 

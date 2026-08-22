@@ -10,7 +10,7 @@ import type * as L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { airportsCentre } from "@/lib/airports";
 import { NEUTRAL_COLOR, teamColor } from "@/lib/teams";
-import type { Airport, LatLng, Plane } from "@/lib/types";
+import type { Airport, LatLng, Vessel } from "@/lib/types";
 
 export interface TeamField {
   teamId: string;
@@ -18,14 +18,14 @@ export interface TeamField {
 }
 
 export interface MapUpdate {
-  planes: Plane[];
+  vessels: Vessel[];
   airports: Airport[];
   control: Record<string, string>;
   fields: TeamField[];
   player: LatLng | null;
   tagRangeKm: number;
   taggableIds: Set<string>;
-  onTag: (planeId: string) => void;
+  onTag: (vesselId: string) => void;
 }
 
 export interface MapHandle {
@@ -34,10 +34,13 @@ export interface MapHandle {
   recenter: (target: LatLng, zoom?: number) => void;
 }
 
-function planeIcon(LL: typeof L, color: string, headingDeg: number, taggable: boolean) {
+// Distinct silhouettes so planes and boats read at a glance: planes are the
+// classic pointed arrow, boats a little hull. Both rotate to their heading.
+function vesselIcon(LL: typeof L, v: Vessel, color: string, taggable: boolean) {
+  const glyph = v.kind === "plane" ? "▲" : "⬗";
   return LL.divIcon({
-    className: `plane-marker ${taggable ? "taggable" : ""}`,
-    html: `<div class="plane-icon" style="color:${color};transform:rotate(${headingDeg}deg)">▲</div>`,
+    className: `vessel-marker ${v.kind}-marker ${taggable ? "taggable" : ""}`,
+    html: `<div class="vessel-icon ${v.kind}-icon" style="color:${color};transform:rotate(${Math.round(v.headingDeg)}deg)">${glyph}</div>`,
     iconSize: [22, 22],
     iconAnchor: [11, 11],
   });
@@ -51,7 +54,7 @@ const MapView = forwardRef<MapHandle, object>(function MapView(_props, ref) {
 
   // Persistent layer caches keyed by id so we update in place (smooth) rather
   // than tearing down and rebuilding every frame.
-  const planeMarkers = useRef<Map<string, L.Marker>>(new Map());
+  const vesselMarkers = useRef<Map<string, L.Marker>>(new Map());
   const trailLines = useRef<Map<string, L.Polyline>>(new Map());
   const airportMarkers = useRef<Map<string, L.CircleMarker>>(new Map());
   const fieldsLayer = useRef<L.LayerGroup | null>(null);
@@ -120,7 +123,7 @@ const MapView = forwardRef<MapHandle, object>(function MapView(_props, ref) {
         });
       }
 
-      // --- Team fields (area enclosed by a team's tagged planes) ---
+      // --- Team fields (area enclosed by a team's tagged vessels) ---
       const fl = fieldsLayer.current!;
       fl.clearLayers();
       for (const f of u.fields) {
@@ -132,44 +135,50 @@ const MapView = forwardRef<MapHandle, object>(function MapView(_props, ref) {
         ).addTo(fl);
       }
 
-      // --- Planes + trails ---
+      // --- Vessels + trails ---
       const seen = new Set<string>();
-      for (const p of u.planes) {
-        seen.add(p.id);
-        const color = teamColor(p.teamId);
-        const taggable = u.taggableIds.has(p.id);
+      for (const v of u.vessels) {
+        seen.add(v.id);
+        const color = teamColor(v.teamId);
+        const taggable = u.taggableIds.has(v.id);
 
         // trail
-        const latlngs = p.trail.map((t) => [t.lat, t.lon] as [number, number]);
-        let line = trailLines.current.get(p.id);
+        const latlngs = v.trail.map((t) => [t.lat, t.lon] as [number, number]);
+        let line = trailLines.current.get(v.id);
         if (!line) {
           line = LL.polyline(latlngs, { weight: 2, opacity: 0.45 }).addTo(map);
-          trailLines.current.set(p.id, line);
+          trailLines.current.set(v.id, line);
         } else {
           line.setLatLngs(latlngs);
         }
         line.setStyle({ color });
 
         // marker
-        let m = planeMarkers.current.get(p.id);
+        let m = vesselMarkers.current.get(v.id);
         if (!m) {
-          m = LL.marker([p.lat, p.lon], {
-            icon: planeIcon(LL, color, p.headingDeg, taggable),
+          m = LL.marker([v.lat, v.lon], {
+            icon: vesselIcon(LL, v, color, taggable),
           }).addTo(map);
-          planeMarkers.current.set(p.id, m);
+          m.bindTooltip(v.callsign, {
+            direction: "top",
+            className: "vessel-label",
+            offset: [0, -10],
+          });
+          vesselMarkers.current.set(v.id, m);
         } else {
-          m.setLatLng([p.lat, p.lon]);
-          m.setIcon(planeIcon(LL, color, p.headingDeg, taggable));
+          m.setLatLng([v.lat, v.lon]);
+          m.setIcon(vesselIcon(LL, v, color, taggable));
+          m.setTooltipContent(v.callsign);
         }
         // Rebind click each frame so the latest onTag + taggable state apply.
         m.off("click");
-        if (taggable) m.on("click", () => u.onTag(p.id));
+        if (taggable) m.on("click", () => u.onTag(v.id));
       }
-      // remove planes that disappeared
-      for (const [id, m] of planeMarkers.current) {
+      // remove vessels that disappeared
+      for (const [id, m] of vesselMarkers.current) {
         if (seen.has(id)) continue;
         m.remove();
-        planeMarkers.current.delete(id);
+        vesselMarkers.current.delete(id);
         trailLines.current.get(id)?.remove();
         trailLines.current.delete(id);
       }
@@ -200,7 +209,7 @@ const MapView = forwardRef<MapHandle, object>(function MapView(_props, ref) {
         }
         if (!didCenterRef.current) {
           didCenterRef.current = true;
-          map.setView(ll, 6);
+          map.setView(ll, 8);
         }
       }
     },
